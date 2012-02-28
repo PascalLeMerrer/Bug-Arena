@@ -3,27 +3,25 @@
 # cocos2d
 # http://cocos2d.org
 #
-import sys
-import os
 import random
 
 from cocos.director import director
 from cocos.layer import Layer, ColorLayer
 from cocos.scene import Scene
 from cocos.scenes.transitions import RotoZoomTransition
-from cocos.actions import *
+from cocos.actions import RotateBy, MoveBy, Repeat, Reverse
 from cocos.sprite import Sprite
 #from cocos import collision_manager
 
-import cocos.euclid
+#import cocos.euclid
 
 import pyglet
-from pyglet import gl, font
-from pyglet.image import Animation
+#from pyglet import gl, font
+#from pyglet.image import Animation
 
 from pyglet.window import key
 
-    
+
 class HomeLayer(Layer):
     ''' the game menu '''
     is_event_handler = True     #: enable pyglet's events
