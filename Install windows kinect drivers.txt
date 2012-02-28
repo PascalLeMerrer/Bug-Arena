@@ -1,0 +1,17 @@
+Installation drivers kinect pour windows XP
+
+1/ télécharger la dernier version des bianires de libusb-win32-releases à partir de http://sourceforge.net/projects/libusb-win32/files/
+2/ décompresser
+3/ connecter la kinect
+4/ executer [rep décompression]/bin/inf-wizard.exe 
+5/ dans la liste "device selection" sélectionner le périphérique XBox (audio/motor/camera) pour lequel il faut générer un driver
+6/ à l'étape device configuration laisser les valeurs par défaut
+7/ sélectionner un emplacement pour l'enregistrement du fichier .inf
+8/ dans la dernière étape de l'assistant, cliquer sur "installer maintenant" ; s'il y a un conflit parce que windows à lancé une installation, poursuivre celle-ci en spécifiant le répertoire dans lequel vous avez stocké le .inf
+9/ répéter la procédure pour les deux autres périphérique XBox
+
+Kinect sous VMWare Player
+
+- suivre la procédure décrite : http://openkinect.org/wiki/Getting_Started#Ubuntu
+- quand on branche la kinect, utiliser le menu "Virtual Machines" de VMWare player
+
