@@ -50,18 +50,21 @@ class Bug(Sprite):
     ''' Characters to be destroyed. '''
 
     def __init__(self):
+        self.duration = random.randint(2, 10);
         bugSpriteSheet = pyglet.resource.image('SpriteSheet.png')
         bugGrid = pyglet.image.ImageGrid(bugSpriteSheet, 2, 3)
-        animation_period = 0.1  # seconds
+        animation_period = max(self.duration/100, 0.05)  # seconds
+        
         animation = bugGrid.get_animation(animation_period)
         super(Bug, self).__init__(animation)
+        
 
         #rect = self.get_rect()
         #self.cshape = collision_manager.AARectShape(
         #    euclid.Vector2(center_x, center_y),
         #    rect.width / 2, rect.height / 2)
 
-    def start(self, duration=10):
+    def start(self):
         ''' places the bug to its start position
             duration: the time in second for the
             bug to go to the bottom of the screen '''
@@ -77,11 +80,12 @@ class Bug(Sprite):
             spawnX = screen_width - half_width
 
         screenHeight = director.get_window_size()[1]
-        self.position = (spawnX, screenHeight)
-        self.rotation = -5
-        rotate = RotateBy(10, 1)
-        move = MoveBy((0, -screenHeight), duration)
-        self.do(Repeat(move) | Repeat(rotate + Reverse(rotate)))
+        self.position = (spawnX, screenHeight + rect.height/2)
+        self.rotation = -self.duration
+        rotate = RotateBy(self.duration*2, 1)
+
+        move = MoveBy((0, -screenHeight - self.get_rect().height), self.duration)
+        self.do(move | Repeat(rotate + Reverse(rotate)))
         self.schedule_interval(checkBugPosition, 1, self)
 
     def stop(self):
@@ -129,15 +133,12 @@ def createBug(dt, *args, **kwargs):
     ''' Get a bug instance from the pool or
         creates one when the pool is empty. '''
     if len(bug_pool):
-        bug = bug_pool.pop()
+        bug = bug_pool.pop(random.randint(0, len(bug_pool)-1))
     else:
         bug = Bug()
-        bug.scale = 1
     bugLayer.add(bug)
-    move_duration = random.random() * 10
-    if move_duration < 2:
-        move_duration = 2
-    bug.start(move_duration)
+
+    bug.start()
     active_bug_list.append(bug)
 
     #global collision_manager
@@ -160,5 +161,8 @@ if __name__ == "__main__":
 
     active_bug_list = []
     bug_pool = []
+    for i in range(50):
+        bug_pool.append(Bug())
+
 
     director.run(homeScene)
