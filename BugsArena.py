@@ -44,20 +44,21 @@ class HomeLayer(Layer):
         if k == key.ENTER:
             director.replace(RotoZoomTransition((gameScene), 1.25))
             return True
+        else:
+            return False
 
 
 class Bug(Sprite):
     ''' Characters to be destroyed. '''
 
     def __init__(self):
-        self.duration = random.randint(2, 10);
+        self.duration = random.randint(2, 10)
         bugSpriteSheet = pyglet.resource.image('SpriteSheet.png')
         bugGrid = pyglet.image.ImageGrid(bugSpriteSheet, 2, 3)
-        animation_period = max(self.duration/100, 0.05)  # seconds
-        
+        animation_period = max(self.duration / 100, 0.05)  # seconds
+
         animation = bugGrid.get_animation(animation_period)
         super(Bug, self).__init__(animation)
-        
 
         #rect = self.get_rect()
         #self.cshape = collision_manager.AARectShape(
@@ -80,11 +81,12 @@ class Bug(Sprite):
             spawnX = screen_width - half_width
 
         screenHeight = director.get_window_size()[1]
-        self.position = (spawnX, screenHeight + rect.height/2)
+        self.position = (spawnX, screenHeight + rect.height / 2)
         self.rotation = -self.duration
-        rotate = RotateBy(self.duration*2, 1)
+        rotate = RotateBy(self.duration * 2, 1)
 
-        move = MoveBy((0, -screenHeight - self.get_rect().height), self.duration)
+        move = MoveBy((0, -screenHeight - self.get_rect().height),
+                self.duration)
         self.do(move | Repeat(rotate + Reverse(rotate)))
         self.schedule_interval(checkBugPosition, 1, self)
 
@@ -133,7 +135,7 @@ def createBug(dt, *args, **kwargs):
     ''' Get a bug instance from the pool or
         creates one when the pool is empty. '''
     if len(bug_pool):
-        bug = bug_pool.pop(random.randint(0, len(bug_pool)-1))
+        bug = bug_pool.pop(random.randint(0, len(bug_pool) - 1))
     else:
         bug = Bug()
     bugLayer.add(bug)
@@ -146,23 +148,24 @@ def createBug(dt, *args, **kwargs):
 
 
 if __name__ == "__main__":
-    director.init(resizable=True)
-    #director.window.set_fullscreen(True)
 
     pyglet.resource.path = ['images', 'sounds', 'fonts']
     pyglet.resource.reindex()
 
-    colorLayer2 = ColorLayer(128, 16, 16, 255)
-    colorLayer1 = ColorLayer(0, 255, 255, 255)
-    homeLayer = HomeLayer()
-    bugLayer = BugLayer()
-    homeScene = Scene(colorLayer1, homeLayer)
-    gameScene = Scene(colorLayer2, bugLayer)
+    director.init(resizable=True)
+    #director.window.set_fullscreen(True)
 
     active_bug_list = []
     bug_pool = []
     for i in range(50):
         bug_pool.append(Bug())
 
+    homeLayer = HomeLayer()
+    colorLayer1 = ColorLayer(0, 255, 255, 255)
+    homeScene = Scene(colorLayer1, homeLayer)
+
+    bugLayer = BugLayer()
+    colorLayer2 = ColorLayer(128, 16, 16, 255)
+    gameScene = Scene(colorLayer2, bugLayer)
 
     director.run(homeScene)
