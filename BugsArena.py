@@ -44,6 +44,8 @@ class HomeLayer(Layer):
         if k == key.ENTER:
             director.replace(RotoZoomTransition((gameScene), 1.25))
             return True
+        else:
+            return False
 
 
 class Bug(Sprite):
@@ -146,23 +148,24 @@ def createBug(dt, *args, **kwargs):
 
 
 if __name__ == "__main__":
-    director.init(resizable=True)
-    #director.window.set_fullscreen(True)
 
     pyglet.resource.path = ['images', 'sounds', 'fonts']
     pyglet.resource.reindex()
 
-    colorLayer2 = ColorLayer(128, 16, 16, 255)
-    colorLayer1 = ColorLayer(0, 255, 255, 255)
-    homeLayer = HomeLayer()
-    bugLayer = BugLayer()
-    homeScene = Scene(colorLayer1, homeLayer)
-    gameScene = Scene(colorLayer2, bugLayer)
+    director.init(resizable=True)
+    #director.window.set_fullscreen(True)
 
     active_bug_list = []
     bug_pool = []
     for i in range(50):
         bug_pool.append(Bug())
 
+    homeLayer = HomeLayer()
+    colorLayer1 = ColorLayer(0, 255, 255, 255)
+    homeScene = Scene(colorLayer1, homeLayer)
+
+    bugLayer = BugLayer()
+    colorLayer2 = ColorLayer(128, 16, 16, 255)
+    gameScene = Scene(colorLayer2, bugLayer)
 
     director.run(homeScene)
