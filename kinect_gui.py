@@ -48,7 +48,7 @@ class KinectDisplay(gtk.DrawingArea):
         self._kinect = kinect
 
         gtk.DrawingArea.__init__(self)
-        self.set_size_request(1024, 480)
+        self.set_size_request(1280, 480)
         self.connect("expose_event", self.expose)
 
     def expose(self, widget, event):
