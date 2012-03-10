@@ -58,10 +58,18 @@ class KinectDisplay(gtk.DrawingArea):
 
     def __init__(self, kinect):
 
-        self._kinect = kinect
-
         gtk.DrawingArea.__init__(self)
         self.set_size_request(1280, 480)
+
+        self._found = False
+        self._rgb_surface = None
+        self._depth_surface = None
+        self._kinect = kinect
+
+        self._x = -1
+        self._y = -1
+        self.refresh_data()
+
         self.connect("expose_event", self.expose)
 
     def expose(self, widget, event):
@@ -69,38 +77,39 @@ class KinectDisplay(gtk.DrawingArea):
         self.draw(self.context)
         return False
 
-    def draw(self, ctx):
+    def refresh_data(self):
+        self._found_kinect, rgb, depth = self._kinect.get_frames()
 
-        found_kinect, rgb, depth = self._kinect.get_frames()
+        alphas = numpy.ones((480, 640, 1), dtype=numpy.uint8) * 255
 
         # Convert numpy arrays to cairo surfaces.
-        alphas = numpy.ones((480, 640, 1), dtype=numpy.uint8) * 255
         rgb32 = numpy.concatenate((alphas, rgb), axis=2)
-        rgb_surface = cairo.ImageSurface.create_for_data(
+        self._rgb_surface = cairo.ImageSurface.create_for_data(
                 rgb32[:, :, ::-1].astype(numpy.uint8),
                 cairo.FORMAT_ARGB32, 640, 480)
 
         # Idem with depth, but take care of special NaN value.
         i = numpy.amin(depth)
-        center_depth = depth[240, 320]
         depth_clean = numpy.where(depth == 2047, 0, depth)
         a = numpy.amax(depth_clean)
         depth = numpy.where(
                 depth == 2047, 0, 255 - (depth - i) * 254.0 / (a - i))
         depth32 = numpy.dstack(
                 (alphas, depth, numpy.where(depth == 0, 128, depth), depth))
-        depth_surface = cairo.ImageSurface.create_for_data(
+        self._depth_surface = cairo.ImageSurface.create_for_data(
                 depth32[:, :, ::-1].astype(numpy.uint8),
                 cairo.FORMAT_ARGB32, 640, 480)
 
-        # Draw arrays.
+    def draw(self, ctx):
+
+        # Draw surfaces.
         ctx.save()
         ctx.move_to(0, 0)
-        ctx.set_source_surface(rgb_surface)
+        ctx.set_source_surface(self._rgb_surface)
         ctx.paint()
 
         ctx.translate(640, 0)
-        ctx.set_source_surface(depth_surface)
+        ctx.set_source_surface(self._depth_surface)
         ctx.paint()
 
         ctx.restore()
@@ -131,7 +140,7 @@ class KinectDisplay(gtk.DrawingArea):
         ctx.stroke()
 
         # Tell if images are not from a present device.
-        if not found_kinect:
+        if not self._found_kinect:
             ctx.select_font_face('Sans')
             ctx.set_font_size(20)
             ctx.move_to(20, 20)
@@ -230,8 +239,8 @@ class KinectTestWindow(gtk.Window):
         self.add(vbox)
 
         # Kinect info visualisation.
-        display = KinectDisplay(self._kinect)
-        vbox.pack_start(display, True, True, 0)
+        self._display = KinectDisplay(self._kinect)
+        vbox.pack_start(self._display, True, True, 0)
 
         hbox = gtk.HBox()
         vbox.pack_start(hbox)
@@ -276,6 +285,7 @@ class KinectTestWindow(gtk.Window):
             self.pause.set_label(gtk.STOCK_MEDIA_PAUSE)
             # Try to prevent unwanted redraw.
             if not data:
+                self._display.refresh_data()
                 self.queue_draw()
             self.timer_id = gobject.timeout_add(100, self._timedout)
         else:
@@ -284,6 +294,7 @@ class KinectTestWindow(gtk.Window):
     def _timedout(self):
         # Stop auto refresh if no Kinect is detected.
         if self._kinect.latest_present:
+            self._display.refresh_data()
             self.queue_draw()
         else:
             if not self._paused:
