@@ -20,6 +20,9 @@ import math
 class Kinect(object):
 
     def __init__(self):
+        self._loaded_rgb = None
+        self._loaded_depth = None
+
         self.latest_rgb = None
         self.latest_depth = None
         self.latest_present = False
@@ -32,9 +35,18 @@ class Kinect(object):
             (depth, _), (rgb, _) = get_depth(), get_video()
             found_kinect = True
         except TypeError:
-            rgb = numpy.load('2012-03-02_14-36-48_rgb.npy')
-            depth = numpy.load('2012-03-02_14-36-48_depth.npy')
+            # Use local data files.
+            if self._loaded_rgb == None:
+                self._loaded_rgb = \
+                        numpy.load('2012-03-02_14-36-48_rgb.npy')
+            rgb = self._loaded_rgb
 
+            if self._loaded_depth == None:
+                self._loaded_depth = \
+                        numpy.load('2012-03-02_14-36-48_depth.npy')
+            depth = self._loaded_depth
+
+        # Memorize results.
         self.latest_rgb = rgb
         self.latest_depth = depth
         self.latest_present = found_kinect
