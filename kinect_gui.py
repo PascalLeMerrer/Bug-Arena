@@ -70,7 +70,27 @@ class KinectDisplay(gtk.DrawingArea):
         self._y = -1
         self.refresh_data()
 
+        self.add_events(gtk.gdk.MOTION_NOTIFY
+                | gtk.gdk.BUTTON_PRESS
+                | gtk.gdk.LEAVE_NOTIFY
+                | gtk.gdk.LEAVE_NOTIFY_MASK)
+        self.connect("motion_notify_event", self.motion_notify)
+        self.connect("leave_notify_event", self.leave_notify)
+
         self.connect("expose_event", self.expose)
+
+    def leave_notify(self, widget, event):
+        self._x, self._y = -1, -1
+        self.queue_draw()
+
+    def motion_notify(self, widget, event):
+        x, y = event.x, event.y
+
+        if x >= 640:
+            x -= 640
+
+        self._x, self._y = x, y
+        self.queue_draw()
 
     def expose(self, widget, event):
         self.context = widget.window.cairo_create()
@@ -115,29 +135,30 @@ class KinectDisplay(gtk.DrawingArea):
         ctx.restore()
 
         # Trace lines.
-        ctx.set_source_rgb(1.0, 0.0, 0.0)
-        ctx.set_line_width(.5)
+        if self._x >= 0 and self._y >= 0:
+            ctx.set_source_rgb(1.0, 0.0, 0.0)
+            ctx.set_line_width(1)
 
-        ctx.move_to(0, 240)
-        ctx.line_to(1280, 240)
-        ctx.stroke()
+            ctx.move_to(0, self._y)
+            ctx.line_to(1280, self._y)
+            ctx.stroke()
 
-        ctx.move_to(320, 0)
-        ctx.line_to(320, 480)
-        ctx.stroke()
+            ctx.move_to(self._x, 0)
+            ctx.line_to(self._x, 480)
+            ctx.stroke()
 
-        ctx.move_to(960, 0)
-        ctx.line_to(960, 480)
-        ctx.stroke()
+            ctx.move_to(self._x + 640, 0)
+            ctx.line_to(self._x + 640, 480)
+            ctx.stroke()
 
-        # Tell about center_depth.
-        print center_depth
-        ctx.select_font_face('Sans')
-        ctx.set_font_size(16)
-        ctx.move_to(1100, 475)
-        ctx.set_source_rgb(0.2, 0.2, 0.8)
-        ctx.show_text("Central pixel depth: %d" % center_depth)
-        ctx.stroke()
+            # Tell about center_depth.
+            ctx.select_font_face('Sans')
+            ctx.set_font_size(16)
+            ctx.move_to(1100, 475)
+            ctx.set_source_rgb(1, 1, 1)
+            ctx.show_text("Pixel depth: %d" %
+                    self._kinect.latest_depth[self._y, self._x])
+            ctx.stroke()
 
         # Tell if images are not from a present device.
         if not self._found_kinect:
