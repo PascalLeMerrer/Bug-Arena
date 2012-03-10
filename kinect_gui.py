@@ -14,6 +14,7 @@ import gobject
 import cairo
 
 import time
+import math
 
 
 class Kinect(object):
@@ -127,6 +128,83 @@ class KinectDisplay(gtk.DrawingArea):
             ctx.stroke()
 
 
+class GameSceneArea(gtk.DrawingArea):
+
+    def __init__(self):
+        gtk.DrawingArea.__init__(self)
+        self.set_size_request(640, 480)
+        self.connect("expose_event", self.expose)
+
+    def expose(self, widget, event):
+        self.context = widget.window.cairo_create()
+        self.draw(self.context)
+        return False
+
+    def draw(self, ctx):
+
+        # Kinect detection cone.
+        ctx.set_line_width(.5)
+        ctx.set_source_rgb(0.0, 0.0, 0.0)
+
+        ctx.move_to(320, 479)
+        ctx.line_to(0, 0)
+        ctx.stroke()
+
+        ctx.move_to(320, 479)
+        ctx.line_to(640, 0)
+        ctx.stroke()
+
+        # Sticks.
+        ctx.set_line_width(2)
+        ctx.set_source_rgb(0.0, 0.0, 1.0)
+
+        ctx.arc(250, 350, 5, 0, 2 * math.pi)
+        ctx.stroke()
+        ctx.arc(390, 350, 5, 0, 2 * math.pi)
+        ctx.stroke()
+
+        # Gaming zone.
+        ctx.rectangle(80, 0, 480, 360)
+        ctx.stroke()
+
+        # Distance indication.
+        ctx.set_line_width(.5)
+
+        # d1 (Inter-stick distance).
+        ctx.set_source_rgb(0.0, 0.5, 0.0)
+
+        ctx.move_to(255, 350)
+        ctx.line_to(385, 350)
+        ctx.stroke()
+
+        ctx.select_font_face('Sans')
+        ctx.set_font_size(16)
+        ctx.move_to(310, 345)
+        ctx.show_text('d1')
+        ctx.stroke()
+
+        ctx.move_to(500, 440)
+        ctx.show_text('d1 = 1.0 m')
+        ctx.stroke()
+
+        # d2 (Kinect-stick distance).
+        ctx.set_source_rgb(0.5, 0.0, 0.0)
+
+        ctx.move_to(270, 350)
+        ctx.line_to(270, 480)
+        ctx.stroke()
+
+        ctx.select_font_face('Sans')
+        ctx.set_font_size(16)
+        ctx.move_to(250, 440)
+        ctx.show_text('d2')
+        ctx.stroke()
+
+        ctx.move_to(500, 460)
+        ctx.show_text('d2 = 1.0 m')
+        ctx.stroke()
+
+
 class KinectTestWindow(gtk.Window):
 
     def __init__(self):
@@ -134,26 +212,34 @@ class KinectTestWindow(gtk.Window):
         self._kinect = Kinect()
 
         gtk.Window.__init__(self)
-        self.set_default_size(1280, 480 + 32)
+        self.set_default_size(1280, 960)
 
         vbox = gtk.VBox()
         self.add(vbox)
 
+        # Kinect info visualisation.
         display = KinectDisplay(self._kinect)
         vbox.pack_start(display, True, True, 0)
 
         hbox = gtk.HBox()
         vbox.pack_start(hbox)
 
+        # Game scheme representation.
+        game_scene = GameSceneArea()
+        hbox.pack_start(game_scene)
+
+        button_vbox = gtk.VBox()
+        hbox.pack_start(button_vbox)
+
         # Save button.
         self.save = gtk.Button('Save', gtk.STOCK_SAVE)
         self.save.set_sensitive(False)
-        hbox.pack_start(self.save)
+        button_vbox.pack_start(self.save)
         self.save.connect("clicked", self._save_cb)
 
         # Pause/Autorefresh button.
         self.pause = gtk.Button('Pause', gtk.STOCK_MEDIA_PAUSE)
-        hbox.pack_start(self.pause)
+        button_vbox.pack_start(self.pause)
         self.pause.connect("clicked", self._pause_cb)
 
         # Auto-refresh at 10 frames per seconds.
