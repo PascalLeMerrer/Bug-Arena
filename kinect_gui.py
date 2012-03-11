@@ -27,6 +27,13 @@ class Kinect(object):
         self.latest_depth = None
         self.latest_present = False
 
+    def depth_to_cm(self, depth):
+        if depth == 2047:
+            return -1
+
+        # Formula from http://vvvv.org/forum/the-kinect-thread.
+        return math.tan(depth / 1024.0 + 0.5) * 33.825 + 5.7
+
     def get_frames(self):
 
         found_kinect = False
@@ -152,13 +159,17 @@ class KinectDisplay(gtk.DrawingArea):
             ctx.stroke()
 
             # Tell about center_depth.
-            ctx.select_font_face('Sans')
-            ctx.set_font_size(16)
-            ctx.move_to(1100, 475)
-            ctx.set_source_rgb(1, 1, 1)
-            ctx.show_text("Pixel depth: %d" %
-                    self._kinect.latest_depth[self._y, self._x])
-            ctx.stroke()
+            depth = self._kinect.latest_depth[self._y, self._x]
+            distance = self._kinect.depth_to_cm(depth)
+            if distance > 0:
+                text = "Distance from Kinect: %0.0f cm (depth = %d)" \
+                        % (distance, depth)
+                ctx.select_font_face('Sans')
+                ctx.set_font_size(16)
+                ctx.move_to(950, 475)
+                ctx.set_source_rgb(1, 1, 1)
+                ctx.show_text(text)
+                ctx.stroke()
 
         # Tell if images are not from a present device.
         if not self._found_kinect:
