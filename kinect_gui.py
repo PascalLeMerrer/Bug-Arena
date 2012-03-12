@@ -264,7 +264,7 @@ class GameSceneArea(gtk.DrawingArea):
         ctx.show_text('d1')
         ctx.stroke()
 
-        ctx.move_to(500, 440)
+        ctx.move_to(500, 435)
         ctx.show_text('d1 = 1.0 m')
         ctx.stroke()
 
@@ -275,22 +275,39 @@ class GameSceneArea(gtk.DrawingArea):
         ctx.line_to(270, 480)
         ctx.stroke()
 
-        ctx.select_font_face('Sans')
         ctx.set_font_size(16)
         ctx.move_to(250, 440)
         ctx.show_text('d2')
         ctx.stroke()
 
-        ctx.move_to(500, 460)
+        ctx.move_to(500, 455)
         ctx.show_text('d2 = 1.0 m')
         ctx.stroke()
 
         # Current cursor depth.
         if self._z >= 0:
+
+            # Draw line.
             ctx.set_line_width(1)
             ctx.set_source_rgb(1.0, 0.0, 0.0)
-            ctx.move_to(0, 450 - self._z)
-            ctx.line_to(640, 450 - self._z)
+            y = 450 - self._z
+            ctx.move_to(0, y)
+            ctx.line_to(640, y)
+            ctx.stroke()
+
+            # Add distance info.
+            ctx.set_line_width(0.5)
+            ctx.move_to(30, y)
+            ctx.line_to(30, 480)
+            ctx.stroke()
+
+            ctx.set_font_size(16)
+            ctx.move_to(20, 440)
+            ctx.show_text('z')
+            ctx.stroke()
+
+            ctx.move_to(500, 475)
+            ctx.show_text('z = %2.2f m' % (self._z / 100.0))
             ctx.stroke()
 
 
