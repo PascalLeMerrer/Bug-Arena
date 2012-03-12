@@ -96,10 +96,11 @@ class KinectDisplay(gtk.DrawingArea):
         data['cursor'] = self._x, self._y
 
         for observer in self._observers:
-            observer.observable_changed()
+            observer.observable_changed(data)
 
     def leave_notify(self, widget, event):
         self._x, self._y = -1, -1
+        self._notify_observers()
         self.queue_draw()
 
     def motion_notify(self, widget, event):
@@ -198,15 +199,27 @@ class KinectDisplay(gtk.DrawingArea):
 
 class GameSceneArea(gtk.DrawingArea):
 
-    def __init__(self):
+    def __init__(self, kinect):
         gtk.DrawingArea.__init__(self)
         self.set_size_request(640, 480)
         self.connect("expose_event", self.expose)
+
+        self._kinect = kinect
+        self._z = -1
 
     def expose(self, widget, event):
         self.context = widget.window.cairo_create()
         self.draw(self.context)
         return False
+
+    def observable_changed(self, data):
+        x, y = data['cursor']
+        try:
+            depth = self._kinect.latest_depth[y, x]
+            self._z = int(self._kinect.depth_to_cm(depth))
+        except TypeError:
+            self._z = -1
+        self.queue_draw()
 
     def draw(self, ctx):
 
@@ -272,6 +285,14 @@ class GameSceneArea(gtk.DrawingArea):
         ctx.show_text('d2 = 1.0 m')
         ctx.stroke()
 
+        # Current cursor depth.
+        if self._z >= 0:
+            ctx.set_line_width(1)
+            ctx.set_source_rgb(1.0, 0.0, 0.0)
+            ctx.move_to(0, 450 - self._z)
+            ctx.line_to(640, 450 - self._z)
+            ctx.stroke()
+
 
 class KinectTestWindow(gtk.Window):
 
@@ -293,7 +314,8 @@ class KinectTestWindow(gtk.Window):
         vbox.pack_start(hbox)
 
         # Game scheme representation.
-        game_scene = GameSceneArea()
+        game_scene = GameSceneArea(self._kinect)
+        self._display.add_observer(game_scene)
         hbox.pack_start(game_scene)
 
         button_vbox = gtk.VBox()
