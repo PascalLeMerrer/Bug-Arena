@@ -73,6 +73,8 @@ class KinectDisplay(gtk.DrawingArea):
         self._depth_surface = None
         self._kinect = kinect
 
+        self._observers = []
+
         self._x = -1
         self._y = -1
         self.refresh_data()
@@ -86,6 +88,16 @@ class KinectDisplay(gtk.DrawingArea):
 
         self.connect("expose_event", self.expose)
 
+    def add_observer(self, observer):
+        self._observers.append(observer)
+
+    def _notify_observers(self):
+        data = {}
+        data['cursor'] = self._x, self._y
+
+        for observer in self._observers:
+            observer.observable_changed()
+
     def leave_notify(self, widget, event):
         self._x, self._y = -1, -1
         self.queue_draw()
@@ -97,6 +109,7 @@ class KinectDisplay(gtk.DrawingArea):
             x -= 640
 
         self._x, self._y = x, y
+        self._notify_observers()
         self.queue_draw()
 
     def expose(self, widget, event):
@@ -126,6 +139,8 @@ class KinectDisplay(gtk.DrawingArea):
         self._depth_surface = cairo.ImageSurface.create_for_data(
                 depth32[:, :, ::-1].astype(numpy.uint8),
                 cairo.FORMAT_ARGB32, 640, 480)
+
+        self._notify_observers()
 
     def draw(self, ctx):
 
