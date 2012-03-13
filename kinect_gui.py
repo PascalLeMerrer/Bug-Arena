@@ -61,6 +61,58 @@ class Kinect(object):
         return found_kinect, rgb, depth
 
 
+class DepthAnalyser(object):
+
+    def __init__(self, depth):
+        self._depth = depth
+
+    def find_sticks(self):
+
+        THRESHOLD = 30
+
+        # Normalize to 0 - 255, in particular
+        # deal with "undef" value.
+        depth = self._depth
+        i = numpy.amin(depth)
+        depth_clean = numpy.where(depth == 2047, 0, depth)
+        a = numpy.amax(depth_clean)
+        depth255 = numpy.where(
+                depth == 2047, 0, 255 - (depth - i) * 254.0 / (a - i))
+
+        # Remove further objects.
+        depth_near = numpy.where(depth255 > 255 - THRESHOLD, 1, 0)
+
+        # Look for first stick (on the left).
+        ya, xa = numpy.nonzero(depth_near[:, :320])
+        x = numpy.amin(xa)
+        y = numpy.amin(ya)
+        w = numpy.amax(xa) - x
+        h = numpy.amax(ya) - y
+        left = x, y, w, h
+
+        # Look for second stick (on the right).
+        ya, xa = numpy.nonzero(depth_near[:, 320:])
+        x = numpy.amin(xa)
+        y = numpy.amin(ya)
+        w = numpy.amax(xa) - x
+        h = numpy.amax(ya) - y
+        right = 320 + x, y, w, h
+
+        return left, right
+
+    def extract_detection_band(self, left_stick, right_stick):
+        x_left, y_left, width_left, heigth_left = left_stick
+        x_right, y_right, width_right, heigth_right = right_stick
+
+        y_min = min(y_left, y_right)
+        y_max = max(y_left + heigth_left, y_right + heigth_right)
+
+        x_min = x_left + width_left
+        x_max = x_right
+
+        return x_min + 1, y_min, x_max - x_min - 2, y_max - y_min
+
+
 class KinectDisplay(gtk.DrawingArea):
 
     def __init__(self, kinect):
