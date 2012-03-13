@@ -178,14 +178,17 @@ class KinectDisplay(gtk.DrawingArea):
             depth = self._kinect.latest_depth[self._y, self._x]
             distance = self._kinect.depth_to_cm(depth)
             if distance > 0:
-                text = "Distance from Kinect: %0.0f cm (depth = %d)" \
-                        % (distance, depth)
-                ctx.select_font_face('Sans')
-                ctx.set_font_size(16)
-                ctx.move_to(950, 475)
-                ctx.set_source_rgb(1, 1, 1)
-                ctx.show_text(text)
-                ctx.stroke()
+                text = "(%d, %d) - distance: %0.0f cm (depth = %d)" \
+                        % (self._x, self._y, distance, depth)
+            else:
+                text = "(%d, %d)" % (self._x, self._y)
+
+            ctx.select_font_face('Sans')
+            ctx.set_font_size(16)
+            ctx.move_to(950, 475)
+            ctx.set_source_rgb(1, 1, 1)
+            ctx.show_text(text)
+            ctx.stroke()
 
         # Tell if images are not from a present device.
         if not self._found_kinect:
