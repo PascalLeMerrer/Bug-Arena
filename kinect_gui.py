@@ -129,6 +129,8 @@ class KinectDisplay(gtk.DrawingArea):
 
         self._x = -1
         self._y = -1
+        self._left_stick, self._right_stick = None, None
+        self._detection_zone = None
         self.refresh_data()
 
         self.add_events(gtk.gdk.MOTION_NOTIFY
@@ -171,17 +173,26 @@ class KinectDisplay(gtk.DrawingArea):
         return False
 
     def refresh_data(self):
+        # Get data.
         self._found_kinect, rgb, depth = self._kinect.get_frames()
 
-        alphas = numpy.ones((480, 640, 1), dtype=numpy.uint8) * 255
+        # Perform basic extractions.
+        o = DepthAnalyser(depth)
+        l, r = o.find_sticks()
+        self._left_stick, self._right_stick = l, r
+        dz = o.extract_detection_band(l, r)
+        self._detection_zone = dz
 
         # Convert numpy arrays to cairo surfaces.
+        alphas = numpy.ones((480, 640, 1), dtype=numpy.uint8) * 255
+
+        # 1. RGB bitmap.
         rgb32 = numpy.concatenate((alphas, rgb), axis=2)
         self._rgb_surface = cairo.ImageSurface.create_for_data(
                 rgb32[:, :, ::-1].astype(numpy.uint8),
                 cairo.FORMAT_ARGB32, 640, 480)
 
-        # Idem with depth, but take care of special NaN value.
+        # 2. Depth map, take care of special NaN value.
         i = numpy.amin(depth)
         depth_clean = numpy.where(depth == 2047, 0, depth)
         a = numpy.amax(depth_clean)
@@ -241,6 +252,23 @@ class KinectDisplay(gtk.DrawingArea):
             ctx.set_source_rgb(1, 1, 1)
             ctx.show_text(text)
             ctx.stroke()
+
+        # Draw sticks rectangles and detection zone.
+        ctx.set_line_width(1)
+        ctx.set_source_rgb(1, 1, 0)
+
+        x, y, w, h = self._left_stick
+        ctx.rectangle(x + 640, y, w, h)
+        ctx.stroke()
+
+        x, y, w, h = self._right_stick
+        ctx.rectangle(x + 640, y, w, h)
+        ctx.stroke()
+
+        ctx.set_source_rgb(1, 0, 1)
+        x, y, w, h = self._detection_zone
+        ctx.rectangle(x + 640, y, w, h)
+        ctx.stroke()
 
         # Tell if images are not from a present device.
         if not self._found_kinect:
