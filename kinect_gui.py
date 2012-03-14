@@ -63,24 +63,26 @@ class Kinect(object):
 
 class DepthAnalyser(object):
 
+    KINECT_DEPTH_NAN = 2047
+
     def __init__(self, depth):
         self._depth = depth
 
     def find_sticks(self):
 
-        THRESHOLD = 30
+        STICK_THRESHOLD = 30
 
         # Normalize to 0 - 255, in particular
-        # deal with "undef" value.
+        # deal with Kinect NAN value.
         depth = self._depth
         i = numpy.amin(depth)
-        depth_clean = numpy.where(depth == 2047, 0, depth)
+        depth_clean = numpy.where(depth == self.KINECT_DEPTH_NAN, 0, depth)
         a = numpy.amax(depth_clean)
-        depth255 = numpy.where(
-                depth == 2047, 0, 255 - (depth - i) * 254.0 / (a - i))
+        depth255 = numpy.where(depth == self.KINECT_DEPTH_NAN,
+                0, 255 - (depth - i) * 254.0 / (a - i))
 
         # Remove further objects.
-        depth_near = numpy.where(depth255 > 255 - THRESHOLD, 1, 0)
+        depth_near = numpy.where(depth255 > 255 - STICK_THRESHOLD, 1, 0)
 
         # Look for first stick (on the left).
         ya, xa = numpy.nonzero(depth_near[:, :320])
@@ -111,6 +113,22 @@ class DepthAnalyser(object):
         x_max = x_right
 
         return x_min + 1, y_min, x_max - x_min - 2, y_max - y_min
+
+    def extract_borders(self, depth, detection_band):
+
+        MAX_DEPTH = 900
+
+        result = []
+
+        x, y, w, h = detection_band
+        for col in range(w):
+            for row in reversed(range(h)):
+                d = depth[y + row, x + col]
+                if d < MAX_DEPTH:  # < self.KINECT_DEPTH_NAN:
+                    result.append((x + col, y + row, d))
+                    break
+
+        return result
 
 
 class KinectDisplay(gtk.DrawingArea):
@@ -182,6 +200,9 @@ class KinectDisplay(gtk.DrawingArea):
         self._left_stick, self._right_stick = l, r
         dz = o.extract_detection_band(l, r)
         self._detection_zone = dz
+        lb = o.extract_borders(depth, dz)
+        self._low_borders = lb
+        #print len(lb), [x for x, y, d in lb]
 
         # Convert numpy arrays to cairo surfaces.
         alphas = numpy.ones((480, 640, 1), dtype=numpy.uint8) * 255
@@ -269,6 +290,21 @@ class KinectDisplay(gtk.DrawingArea):
         x, y, w, h = self._detection_zone
         ctx.rectangle(x + 640, y, w, h)
         ctx.stroke()
+
+        # Draw detected feet in detection zone.
+        ctx.set_line_width(2)
+        ctx.set_source_rgb(1, 0, 0)
+        x, y, d = self._low_borders[0]
+        prev = x
+        ctx.move_to(640 + x, y)
+        for x, y, _ in self._low_borders:
+            if x - prev == 1:
+                ctx.line_to(640 + x, y)
+            else:
+                # Do not connect separated zones.
+                ctx.stroke()
+                ctx.move_to(640 + x, y)
+            prev = x
 
         # Tell if images are not from a present device.
         if not self._found_kinect:
