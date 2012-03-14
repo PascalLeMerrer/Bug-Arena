@@ -177,7 +177,7 @@ class KinectDisplay(gtk.DrawingArea):
         self._y = -1
         self._left_stick, self._right_stick = None, None
         self._detection_zone = None
-        self._foot = None
+        self._feet = None
         self.refresh_data()
 
         self.add_events(gtk.gdk.MOTION_NOTIFY
@@ -195,6 +195,7 @@ class KinectDisplay(gtk.DrawingArea):
     def _notify_observers(self):
         data = {}
         data['cursor'] = self._x, self._y
+        data['feet'] = self._feet
 
         for observer in self._observers:
             observer.observable_changed(data)
@@ -231,7 +232,7 @@ class KinectDisplay(gtk.DrawingArea):
         self._detection_zone = dz
         lb = o.extract_borders(depth, dz)
         f = o.analyze_borders(lb)
-        self._foots = f
+        self._feet = f
 
         # Convert numpy arrays to cairo surfaces.
         alphas = numpy.ones((480, 640, 1), dtype=numpy.uint8) * 255
@@ -323,7 +324,7 @@ class KinectDisplay(gtk.DrawingArea):
         # Draw detected feet in detection zone.
         ctx.set_line_width(2)
         ctx.set_source_rgb(1, 0, 0)
-        for foot in self._foots:
+        for foot in self._feet:
             x, y, _ = foot[0]
             ctx.move_to(640 + x, y)
             for x, y, _ in foot[1:]:
@@ -349,6 +350,7 @@ class GameSceneArea(gtk.DrawingArea):
 
         self._kinect = kinect
         self._z = -1
+        self._feet = []
 
     def expose(self, widget, event):
         self.context = widget.window.cairo_create()
@@ -362,6 +364,9 @@ class GameSceneArea(gtk.DrawingArea):
             self._z = int(self._kinect.depth_to_cm(depth))
         except TypeError:
             self._z = -1
+
+        self._feet = data['feet']
+
         self.queue_draw()
 
     def draw(self, ctx):
@@ -451,6 +456,21 @@ class GameSceneArea(gtk.DrawingArea):
 
             ctx.move_to(500, 475)
             ctx.show_text('z = %2.2f m' % (self._z / 100.0))
+            ctx.stroke()
+
+        # Detected feet.
+        #
+        # FIXME x coordinate must be computed according to z
+        #       to take captor focal length.
+        ctx.set_line_width(1)
+        ctx.set_source_rgb(0.0, 0.7, 0.0)
+        for foot in self._feet:
+            x, _, d = foot[0]
+            z = 450 - self._kinect.depth_to_cm(d)
+            ctx.move_to(x, z)
+            for x, _, d in foot[1:]:
+                z = 450 - self._kinect.depth_to_cm(d)
+                ctx.line_to(x, z)
             ctx.stroke()
 
 
