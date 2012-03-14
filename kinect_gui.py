@@ -115,10 +115,9 @@ class DepthAnalyser(object):
         return x_min + 1, y_min, x_max - x_min - 2, y_max - y_min
 
     def extract_borders(self, depth, detection_band):
+        result = []
 
         MAX_DEPTH = 900
-
-        result = []
 
         x, y, w, h = detection_band
         for col in range(w):
@@ -127,6 +126,35 @@ class DepthAnalyser(object):
                 if d < MAX_DEPTH:  # < self.KINECT_DEPTH_NAN:
                     result.append((x + col, y + row, d))
                     break
+
+        return result
+
+    def analyze_borders(self, borders):
+
+        MAX_BORDER_HEIGHT = 10
+
+        # Separate disconnected zones.
+        zones = []
+        x, _, _ = borders[0]
+        prev = x
+        foot = []
+        for x, y, d in borders:
+            # FIXME Should also check depth biggest variations?
+            if x - prev <= 1:
+                foot.append((x, y, d))
+            else:
+                zones.append(foot)
+                foot = [(x, y, d)]
+            prev = x
+        if foot:
+            zones.append(foot)
+
+        # Limit zone heigth.
+        result = []
+        for foot in zones:
+            m = max(y for _, y, _ in foot)
+            result.append([(x, y, d) for x, y, d in foot
+                if m - y <= MAX_BORDER_HEIGHT])
 
         return result
 
@@ -149,6 +177,7 @@ class KinectDisplay(gtk.DrawingArea):
         self._y = -1
         self._left_stick, self._right_stick = None, None
         self._detection_zone = None
+        self._foot = None
         self.refresh_data()
 
         self.add_events(gtk.gdk.MOTION_NOTIFY
@@ -201,8 +230,8 @@ class KinectDisplay(gtk.DrawingArea):
         dz = o.extract_detection_band(l, r)
         self._detection_zone = dz
         lb = o.extract_borders(depth, dz)
-        self._low_borders = lb
-        #print len(lb), [x for x, y, d in lb]
+        f = o.analyze_borders(lb)
+        self._foots = f
 
         # Convert numpy arrays to cairo surfaces.
         alphas = numpy.ones((480, 640, 1), dtype=numpy.uint8) * 255
@@ -294,17 +323,12 @@ class KinectDisplay(gtk.DrawingArea):
         # Draw detected feet in detection zone.
         ctx.set_line_width(2)
         ctx.set_source_rgb(1, 0, 0)
-        x, y, d = self._low_borders[0]
-        prev = x
-        ctx.move_to(640 + x, y)
-        for x, y, _ in self._low_borders:
-            if x - prev == 1:
+        for foot in self._foots:
+            x, y, _ = foot[0]
+            ctx.move_to(640 + x, y)
+            for x, y, _ in foot[1:]:
                 ctx.line_to(640 + x, y)
-            else:
-                # Do not connect separated zones.
-                ctx.stroke()
-                ctx.move_to(640 + x, y)
-            prev = x
+            ctx.stroke()
 
         # Tell if images are not from a present device.
         if not self._found_kinect:
