@@ -499,12 +499,15 @@ class GameSceneArea(gtk.DrawingArea):
         ctx.set_source_rgb(0.0, 0.7, 0.0)
         for foot in self._feet:
             x, _, d = foot[0]
-            z = 450 - self._kinect.depth_to_cm(d)
+            z = self.depth_to_pixel(d)
             ctx.move_to(x, z)
             for x, _, d in foot[1:]:
-                z = 450 - self._kinect.depth_to_cm(d)
+                z = self.depth_to_pixel(d)
                 ctx.line_to(x, z)
             ctx.stroke()
+
+    def depth_to_pixel(self, d):
+        return int(450 - self._kinect.depth_to_cm(d))
 
 
 class KinectTestWindow(gtk.Window):
