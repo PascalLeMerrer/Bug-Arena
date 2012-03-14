@@ -271,6 +271,24 @@ class KinectDisplay(gtk.DrawingArea):
 
         ctx.restore()
 
+        # Coordinate system.
+        ctx.set_line_width(1)
+        ctx.set_source_rgb(1.0, 1.0, 1.0)
+        ctx.move_to(640 + 30, 470)
+        ctx.line_to(640 + 10, 470)
+        ctx.line_to(640 + 10, 450)
+        ctx.stroke()
+
+        ctx.select_font_face('Sans')
+        ctx.set_font_size(12)
+        ctx.move_to(640 + 3, 450)
+        ctx.show_text('y')
+        ctx.stroke()
+
+        ctx.move_to(640 + 30, 477)
+        ctx.show_text('x')
+        ctx.stroke()
+
         # Trace lines.
         if self._x >= 0 and self._y >= 0:
             ctx.set_source_rgb(1.0, 0.0, 0.0)
@@ -297,7 +315,6 @@ class KinectDisplay(gtk.DrawingArea):
             else:
                 text = "(%d, %d)" % (self._x, self._y)
 
-            ctx.select_font_face('Sans')
             ctx.set_font_size(16)
             ctx.move_to(950, 475)
             ctx.set_source_rgb(1, 1, 1)
@@ -333,7 +350,6 @@ class KinectDisplay(gtk.DrawingArea):
 
         # Tell if images are not from a present device.
         if not self._found_kinect:
-            ctx.select_font_face('Sans')
             ctx.set_font_size(20)
             ctx.move_to(20, 20)
             ctx.set_source_rgb(0.0, 0.0, 1.0)
@@ -371,6 +387,24 @@ class GameSceneArea(gtk.DrawingArea):
 
     def draw(self, ctx):
 
+        # Coordinate system.
+        ctx.set_line_width(1)
+        ctx.set_source_rgb(0.0, 0.0, 0.0)
+        ctx.move_to(30, 470)
+        ctx.line_to(10, 470)
+        ctx.line_to(10, 450)
+        ctx.stroke()
+
+        ctx.select_font_face('Sans')
+        ctx.set_font_size(12)
+        ctx.move_to(3, 450)
+        ctx.show_text('z')
+        ctx.stroke()
+
+        ctx.move_to(30, 477)
+        ctx.show_text('x')
+        ctx.stroke()
+
         # Kinect detection cone.
         ctx.set_line_width(.5)
         ctx.set_source_rgb(0.0, 0.0, 0.0)
@@ -406,7 +440,6 @@ class GameSceneArea(gtk.DrawingArea):
         ctx.line_to(385, 350)
         ctx.stroke()
 
-        ctx.select_font_face('Sans')
         ctx.set_font_size(16)
         ctx.move_to(310, 345)
         ctx.show_text('d1')
