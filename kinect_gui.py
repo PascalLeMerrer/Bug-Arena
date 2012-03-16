@@ -478,12 +478,12 @@ class GameSceneArea(gtk.DrawingArea):
 
             # Add distance info.
             ctx.set_line_width(0.5)
-            ctx.move_to(30, y)
-            ctx.line_to(30, 480)
+            ctx.move_to(60, y)
+            ctx.line_to(60, 480)
             ctx.stroke()
 
             ctx.set_font_size(16)
-            ctx.move_to(20, 440)
+            ctx.move_to(50, 440)
             ctx.show_text('z')
             ctx.stroke()
 
