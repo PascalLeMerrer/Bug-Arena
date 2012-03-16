@@ -492,9 +492,6 @@ class GameSceneArea(gtk.DrawingArea):
             ctx.stroke()
 
         # Detected feet.
-        #
-        # FIXME x coordinate must be computed according to z
-        #       to take captor focal length.
         ctx.set_line_width(2)
         ctx.set_source_rgb(0.5, 0, 0)
         for foot in self._feet:
