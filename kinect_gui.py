@@ -135,17 +135,20 @@ class DepthAnalyser(object):
 
         # Separate disconnected zones.
         zones = []
-        x, _, _ = borders[0]
-        prev = x
+        x, _, d = borders[0]
+        prev_x = x
+        conv = Kinect().depth_to_cm
+        prev_z = conv(d)
         foot = []
         for x, y, d in borders:
-            # FIXME Should also check depth biggest variations?
-            if x - prev <= 1:
+            z = conv(d)
+            if x - prev_x <= 1 and abs(prev_z - z) < 10:
                 foot.append((x, y, d))
             else:
                 zones.append(foot)
                 foot = [(x, y, d)]
-            prev = x
+            prev_x = x
+            prev_z = z
         if foot:
             zones.append(foot)
 
