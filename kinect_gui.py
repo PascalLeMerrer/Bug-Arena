@@ -117,7 +117,7 @@ class DepthAnalyser(object):
     def extract_borders(self, depth, detection_band):
         result = []
 
-        MAX_DEPTH = 900
+        MAX_DEPTH = 980  # About 3 meters.
 
         x, y, w, h = detection_band
         for col in range(w):
