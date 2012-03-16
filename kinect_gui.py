@@ -495,19 +495,28 @@ class GameSceneArea(gtk.DrawingArea):
         #
         # FIXME x coordinate must be computed according to z
         #       to take captor focal length.
-        ctx.set_line_width(1)
-        ctx.set_source_rgb(0.0, 0.7, 0.0)
+        ctx.set_line_width(2)
+        ctx.set_source_rgb(0.5, 0, 0)
         for foot in self._feet:
-            x, _, d = foot[0]
+            p, _, d = foot[0]
             z = self.depth_to_pixel(d)
+            x = self.x_to_pixel(p, d)
             ctx.move_to(x, z)
-            for x, _, d in foot[1:]:
+            for p, _, d in foot[1:]:
                 z = self.depth_to_pixel(d)
+                x = self.x_to_pixel(p, d)
                 ctx.line_to(x, z)
             ctx.stroke()
 
     def depth_to_pixel(self, d):
         return int(450 - self._kinect.depth_to_cm(d))
+
+    def x_to_pixel(self, x, d):
+        # .280 / 0.6 -> Measured constant
+        # 180        -> pixel per meter
+        coeff = - .280 / 0.6 / 180
+        result = 320 + (320.0 - x) * self._kinect.depth_to_cm(d) * coeff
+        return result
 
 
 class KinectTestWindow(gtk.Window):
