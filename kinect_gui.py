@@ -548,11 +548,11 @@ class KinectTestWindow(gtk.Window):
         button_vbox.pack_start(self.pause)
         self.pause.connect("clicked", self._pause_cb)
 
-        # Auto-refresh at 10 frames per seconds.
-        self.timer_id = gobject.timeout_add(100, self._timedout)
-
         self.connect("destroy", gtk.main_quit)
         self.show_all()
+
+        # Auto-refresh at 10 frames per seconds.
+        self.timer_id = gobject.timeout_add(1000, self._timedout)
 
     def _save_cb(self, widget, data=None):
         rgb = self._kinect.latest_rgb
@@ -572,7 +572,7 @@ class KinectTestWindow(gtk.Window):
             if not data:
                 self._display.refresh_data()
                 self.queue_draw()
-            self.timer_id = gobject.timeout_add(100, self._timedout)
+            self.timer_id = gobject.timeout_add(1000, self._timedout)
         else:
             self.pause.set_label(gtk.STOCK_REFRESH)
 
