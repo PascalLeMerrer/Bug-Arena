@@ -1,0 +1,7 @@
+Playing with Kinect and Python
+
+Depends on
+ - Cocos2d
+ - PyGtk2
+ - Numpy
+ - Libfreenect
