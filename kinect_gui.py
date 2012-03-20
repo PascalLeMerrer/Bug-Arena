@@ -17,17 +17,13 @@ import time
 import math
 
 
-# Precalcule all possible distance values, in centimeters.
-#
-# Formula from http://vvvv.org/forum/the-kinect-thread.
-DEPTH_ARRAY = numpy.array([math.tan(d / 1024.0 + 0.5) * 33.825
-    + 5.7 for d in range(2048)])
-
-
 class Kinect(object):
 
     UNDEF_DEPTH = 2047
     UNDEF_DISTANCE = 2000.0
+    # Formula from http://vvvv.org/forum/the-kinect-thread.
+    DEPTH_ARRAY = numpy.array([math.tan(d / 1024.0 + 0.5) * 33.825
+        + 5.7 for d in range(2048)])
 
     def __init__(self):
         self._loaded_rgb = None
@@ -38,7 +34,7 @@ class Kinect(object):
         self.latest_present = False
 
     def depth_to_cm(self, depth):
-        return DEPTH_ARRAY[depth]
+        return self.DEPTH_ARRAY[depth]
 
     def get_frames(self):
 
@@ -74,7 +70,7 @@ class DepthAnalyser(object):
 
         # Convert to cm.
         self._distance = numpy.where(
-                depth < 1000, DEPTH_ARRAY[depth], Kinect.UNDEF_DISTANCE)
+                depth < 1000, Kinect.DEPTH_ARRAY[depth], Kinect.UNDEF_DISTANCE)
 
     def find_sticks(self):
 
