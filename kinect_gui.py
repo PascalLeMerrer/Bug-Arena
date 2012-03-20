@@ -17,7 +17,17 @@ import time
 import math
 
 
+# Precalcule all possible distance values, in centimeters.
+#
+# Formula from http://vvvv.org/forum/the-kinect-thread.
+DEPTH_ARRAY = numpy.array([math.tan(d / 1024.0 + 0.5) * 33.825
+    + 5.7 for d in range(2048)])
+
+
 class Kinect(object):
+
+    UNDEF_DEPTH = 2047
+    UNDEF_DISTANCE = 2000.0
 
     def __init__(self):
         self._loaded_rgb = None
@@ -28,11 +38,7 @@ class Kinect(object):
         self.latest_present = False
 
     def depth_to_cm(self, depth):
-        if depth == 2047:
-            return -1
-
-        # Formula from http://vvvv.org/forum/the-kinect-thread.
-        return math.tan(depth / 1024.0 + 0.5) * 33.825 + 5.7
+        return DEPTH_ARRAY[depth]
 
     def get_frames(self):
 
