@@ -69,26 +69,20 @@ class Kinect(object):
 
 class DepthAnalyser(object):
 
-    KINECT_DEPTH_NAN = 2047
-
     def __init__(self, depth):
         self._depth = depth
 
+        # Convert to cm.
+        self._distance = numpy.where(
+                depth < 1000, DEPTH_ARRAY[depth], Kinect.UNDEF_DISTANCE)
+
     def find_sticks(self):
 
-        STICK_THRESHOLD = 30
-
-        # Normalize to 0 - 255, in particular
-        # deal with Kinect NAN value.
-        depth = self._depth
-        i = numpy.amin(depth)
-        depth_clean = numpy.where(depth == self.KINECT_DEPTH_NAN, 0, depth)
-        a = numpy.amax(depth_clean)
-        depth255 = numpy.where(depth == self.KINECT_DEPTH_NAN,
-                0, 255 - (depth - i) * 254.0 / (a - i))
-
         # Remove further objects.
-        depth_near = numpy.where(depth255 > 255 - STICK_THRESHOLD, 1, 0)
+        closest = numpy.amin(self._distance)
+        STICK_THRESHOLD = 10.0  # cm
+        depth_near = numpy.where(
+                self._distance < closest + STICK_THRESHOLD, 1, 0)
 
         # Look for first stick (on the left).
         ya, xa = numpy.nonzero(depth_near[:, :320])
@@ -120,39 +114,38 @@ class DepthAnalyser(object):
 
         return x_min + 1, y_min, x_max - x_min - 2, y_max - y_min
 
-    def extract_borders(self, depth, detection_band):
+    def extract_borders(self, detection_band):
         result = []
 
-        MAX_DEPTH = 980  # About 3 meters.
+        MAX_DEPTH = 300.0  # 3 meters.
 
         x, y, w, h = detection_band
         for col in range(w):
             for row in reversed(range(h)):
-                d = depth[y + row, x + col]
-                if d < MAX_DEPTH:  # < self.KINECT_DEPTH_NAN:
-                    result.append((x + col, y + row, d))
+                z = self._distance[y + row, x + col]
+                if z < MAX_DEPTH:
+                    result.append((x + col, y + row, z))
                     break
 
         return result
 
     def analyze_borders(self, borders):
 
-        MAX_BORDER_HEIGHT = 10
+        MAX_BORDER_HEIGHT = 10  # pixels.
 
-        # Separate disconnected zones.
+        # Find obstacles in the field.
         zones = []
-        x, _, d = borders[0]
+        x, _, z = borders[0]
         prev_x = x
-        conv = Kinect().depth_to_cm
-        prev_z = conv(d)
+        prev_z = z
         foot = []
-        for x, y, d in borders:
-            z = conv(d)
+        for x, y, z in borders:
+            # Separate disconnected zones.
             if x - prev_x <= 1 and abs(prev_z - z) < 10:
-                foot.append((x, y, d))
+                foot.append((x, y, z))
             else:
                 zones.append(foot)
-                foot = [(x, y, d)]
+                foot = [(x, y, z)]
             prev_x = x
             prev_z = z
         if foot:
@@ -162,7 +155,7 @@ class DepthAnalyser(object):
         result = []
         for foot in zones:
             m = max(y for _, y, _ in foot)
-            result.append([(x, y, d) for x, y, d in foot
+            result.append([(x, y, z) for x, y, z in foot
                 if m - y <= MAX_BORDER_HEIGHT])
 
         return result
@@ -182,6 +175,7 @@ class KinectDisplay(gtk.DrawingArea):
 
         self._observers = []
 
+        self._analyzer = None
         self._x = -1
         self._y = -1
         self._left_stick, self._right_stick = None, None
@@ -203,7 +197,8 @@ class KinectDisplay(gtk.DrawingArea):
 
     def _notify_observers(self):
         data = {}
-        data['cursor'] = self._x, self._y
+        data['cursor'] = self._x, self._y, \
+                self._analyzer._distance[self._y, self._x]
         data['feet'] = self._feet
 
         for observer in self._observers:
@@ -230,17 +225,17 @@ class KinectDisplay(gtk.DrawingArea):
         return False
 
     def refresh_data(self):
-        # Get data.
+        # Get raw data.
         self._found_kinect, rgb, depth = self._kinect.get_frames()
 
-        # Perform basic extractions.
-        o = DepthAnalyser(depth)
-        l, r = o.find_sticks()
+        # Perform basic data extraction.
+        self._analyzer = DepthAnalyser(depth)
+        l, r = self._analyzer.find_sticks()
         self._left_stick, self._right_stick = l, r
-        dz = o.extract_detection_band(l, r)
+        dz = self._analyzer.extract_detection_band(l, r)
         self._detection_zone = dz
-        lb = o.extract_borders(depth, dz)
-        f = o.analyze_borders(lb)
+        lb = self._analyzer.extract_borders(dz)
+        f = self._analyzer.analyze_borders(lb)
         self._feet = f
 
         # Convert numpy arrays to cairo surfaces.
@@ -385,15 +380,8 @@ class GameSceneArea(gtk.DrawingArea):
         return False
 
     def observable_changed(self, data):
-        x, y = data['cursor']
-        try:
-            depth = self._kinect.latest_depth[y, x]
-            self._z = int(self._kinect.depth_to_cm(depth))
-        except TypeError:
-            self._z = -1
-
+        _, _, self._z = data['cursor']
         self._feet = data['feet']
-
         self.queue_draw()
 
     def draw(self, ctx):
@@ -477,7 +465,7 @@ class GameSceneArea(gtk.DrawingArea):
         ctx.stroke()
 
         # Current cursor depth.
-        if self._z >= 0:
+        if self._z >= 50.0 and self._z != Kinect.UNDEF_DISTANCE:
 
             # Draw line.
             ctx.set_line_width(1)
@@ -506,25 +494,25 @@ class GameSceneArea(gtk.DrawingArea):
         ctx.set_line_width(2)
         ctx.set_source_rgb(0.5, 0, 0)
         for foot in self._feet:
-            p, _, d = foot[0]
-            z = self.depth_to_pixel(d)
-            x = self.x_to_pixel(p, d)
-            ctx.move_to(x, z)
-            for p, _, d in foot[1:]:
-                z = self.depth_to_pixel(d)
-                x = self.x_to_pixel(p, d)
-                ctx.line_to(x, z)
+            p, _, z = foot[0]
+            x = self.x_to_pixel(p, z)
+            y = self.z_to_pixel(z)
+            ctx.move_to(x, y)
+            for p, _, z in foot[1:]:
+                x = self.x_to_pixel(p, z)
+                y = self.z_to_pixel(z)
+                ctx.line_to(x, y)
             ctx.stroke()
 
-    def depth_to_pixel(self, d):
-        return int(450 - self._kinect.depth_to_cm(d))
+    def z_to_pixel(self, z):
+        # FIXME Needs proper scaling.
+        return 450 - z
 
-    def x_to_pixel(self, x, d):
+    def x_to_pixel(self, x, z):
         # .280 / 0.6 -> Measured constant
         # 180        -> pixel per meter
         coeff = - .280 / 0.6 / 180
-        result = 320 + (320.0 - x) * self._kinect.depth_to_cm(d) * coeff
-        return result
+        return 320 + (320.0 - x) * z * coeff
 
 
 class KinectTestWindow(gtk.Window):
