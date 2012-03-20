@@ -82,25 +82,27 @@ class DepthAnalyser(object):
 
         # Look for first stick (on the left).
         ya, xa = numpy.nonzero(depth_near[:, :320])
-        x = numpy.amin(xa)
-        y = numpy.amin(ya)
-        w = numpy.amax(xa) - x
-        h = numpy.amax(ya) - y
-        left = x, y, w, h
+        x_min = numpy.amin(xa)
+        y_min = numpy.amin(ya)
+        x_max = numpy.amax(xa)
+        y_max = numpy.amax(ya)
+        dist = numpy.amin(self._distance[y_min:y_max, x_min:x_max])
+        left = x_min, y_min, x_max - x_min, y_max - y_min, dist
 
         # Look for second stick (on the right).
         ya, xa = numpy.nonzero(depth_near[:, 320:])
-        x = numpy.amin(xa)
-        y = numpy.amin(ya)
-        w = numpy.amax(xa) - x
-        h = numpy.amax(ya) - y
-        right = 320 + x, y, w, h
+        x_min = numpy.amin(xa) + 320
+        y_min = numpy.amin(ya)
+        x_max = numpy.amax(xa) + 320
+        y_max = numpy.amax(ya)
+        dist = numpy.amin(self._distance[y_min:y_max, x_min:x_max])
+        right = x_min, y_min, x_max - x_min, y_max - y_min, dist
 
         return left, right
 
     def extract_detection_band(self, left_stick, right_stick):
-        x_left, y_left, width_left, heigth_left = left_stick
-        x_right, y_right, width_right, heigth_right = right_stick
+        x_left, y_left, width_left, heigth_left, _ = left_stick
+        x_right, y_right, width_right, heigth_right, _ = right_stick
 
         y_min = min(y_left, y_right)
         y_max = max(y_left + heigth_left, y_right + heigth_right)
@@ -327,11 +329,11 @@ class KinectDisplay(gtk.DrawingArea):
         ctx.set_line_width(1)
         ctx.set_source_rgb(1, 1, 0)
 
-        x, y, w, h = self._left_stick
+        x, y, w, h, _ = self._left_stick
         ctx.rectangle(x + 640, y, w, h)
         ctx.stroke()
 
-        x, y, w, h = self._right_stick
+        x, y, w, h, _ = self._right_stick
         ctx.rectangle(x + 640, y, w, h)
         ctx.stroke()
 
