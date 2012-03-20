@@ -244,22 +244,24 @@ class KinectDisplay(gtk.DrawingArea):
         self._feet = f
 
         # Convert numpy arrays to cairo surfaces.
-        alphas = numpy.ones((480, 640, 1), dtype=numpy.uint8) * 255
+        alpha_channel = numpy.ones((480, 640, 1), dtype=numpy.uint8) * 255
 
         # 1. RGB bitmap.
-        rgb32 = numpy.concatenate((alphas, rgb), axis=2)
+        rgb32 = numpy.concatenate((alpha_channel, rgb), axis=2)
         self._rgb_surface = cairo.ImageSurface.create_for_data(
                 rgb32[:, :, ::-1].astype(numpy.uint8),
                 cairo.FORMAT_ARGB32, 640, 480)
 
         # 2. Depth map, take care of special NaN value.
         i = numpy.amin(depth)
-        depth_clean = numpy.where(depth == 2047, 0, depth)
+        depth_clean = numpy.where(depth == Kinect.UNDEF_DEPTH, 0, depth)
         a = numpy.amax(depth_clean)
         depth = numpy.where(
-                depth == 2047, 0, 255 - (depth - i) * 254.0 / (a - i))
-        depth32 = numpy.dstack(
-                (alphas, depth, numpy.where(depth == 0, 128, depth), depth))
+                depth == Kinect.UNDEF_DEPTH,
+                0,
+                255 - (depth - i) * 254.0 / (a - i))
+        depth32 = numpy.dstack((
+            alpha_channel, depth, numpy.where(depth == 0, 128, depth), depth))
         self._depth_surface = cairo.ImageSurface.create_for_data(
                 depth32[:, :, ::-1].astype(numpy.uint8),
                 cairo.FORMAT_ARGB32, 640, 480)
