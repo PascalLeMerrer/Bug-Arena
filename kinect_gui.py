@@ -371,6 +371,7 @@ class GameSceneArea(gtk.DrawingArea):
 
         self._kinect = kinect
         self._z = -1
+        self._x = -1
         self._feet = []
         self._left_stick, self._right_stick = None, None
 
@@ -380,7 +381,7 @@ class GameSceneArea(gtk.DrawingArea):
         return False
 
     def observable_changed(self, data):
-        _, _, self._z = data['cursor']
+        self._x, _, self._z = data['cursor']
         self._feet = data['feet']
         self._left_stick, self._right_stick = data['stick']
         self.queue_draw()
@@ -485,9 +486,14 @@ class GameSceneArea(gtk.DrawingArea):
             # Draw line.
             ctx.set_line_width(1)
             ctx.set_source_rgb(1.0, 0.0, 0.0)
-            y = 450 - self._z
+            y = self.z_to_pixel(self._z)
             ctx.move_to(0, y)
             ctx.line_to(640, y)
+            ctx.stroke()
+
+            x = self.x_to_pixel(self._x, self._z)
+            ctx.move_to(x, y - 5)
+            ctx.line_to(x, y + 5)
             ctx.stroke()
 
             # Add distance info.
