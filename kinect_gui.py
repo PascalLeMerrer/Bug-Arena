@@ -198,6 +198,7 @@ class KinectDisplay(gtk.DrawingArea):
         data['cursor'] = self._x, self._y, \
                 self._analyzer._distance[self._y, self._x]
         data['feet'] = self._feet
+        data['stick'] = self._left_stick, self._right_stick
 
         for observer in self._observers:
             observer.observable_changed(data)
@@ -371,6 +372,7 @@ class GameSceneArea(gtk.DrawingArea):
         self._kinect = kinect
         self._z = -1
         self._feet = []
+        self._left_stick, self._right_stick = None, None
 
     def expose(self, widget, event):
         self.context = widget.window.cairo_create()
@@ -380,6 +382,7 @@ class GameSceneArea(gtk.DrawingArea):
     def observable_changed(self, data):
         _, _, self._z = data['cursor']
         self._feet = data['feet']
+        self._left_stick, self._right_stick = data['stick']
         self.queue_draw()
 
     def draw(self, ctx):
@@ -414,53 +417,67 @@ class GameSceneArea(gtk.DrawingArea):
         ctx.line_to(640, 0)
         ctx.stroke()
 
-        # Sticks.
+        # Gaming zone.
         ctx.set_line_width(2)
         ctx.set_source_rgb(0.0, 0.0, 1.0)
-
-        ctx.arc(250, 350, 5, 0, 2 * math.pi)
-        ctx.stroke()
-        ctx.arc(390, 350, 5, 0, 2 * math.pi)
-        ctx.stroke()
-
-        # Gaming zone.
         ctx.rectangle(80, 0, 480, 360)
         ctx.stroke()
 
-        # Distance indication.
-        ctx.set_line_width(.5)
+        # Sticks.
+        if self._left_stick and self._right_stick:
 
-        # d1 (Inter-stick distance).
-        ctx.set_source_rgb(0.0, 0.5, 0.0)
+            ctx.set_line_width(1)
 
-        ctx.move_to(255, 350)
-        ctx.line_to(385, 350)
-        ctx.stroke()
+            x, _, w, _, z_l = self._left_stick
+            x_l = self.x_to_pixel(x + w, z_l)
+            radius = (x_l - self.x_to_pixel(x, z_l)) / 2
+            ctx.arc(x_l - radius, self.z_to_pixel(z_l) - radius,
+                    radius, 0, 2 * math.pi)
+            ctx.stroke()
 
-        ctx.set_font_size(16)
-        ctx.move_to(310, 345)
-        ctx.show_text('d1')
-        ctx.stroke()
+            x, _, w, _, z_r = self._right_stick
+            x_r = self.x_to_pixel(x + w, z_r)
+            radius = (x_r - self.x_to_pixel(x, z_r)) / 2
+            ctx.arc(x_r - radius, self.z_to_pixel(z_r) - radius,
+                    radius, 0, 2 * math.pi)
+            ctx.stroke()
 
-        ctx.move_to(500, 435)
-        ctx.show_text('d1 = 1.0 m')
-        ctx.stroke()
+            # d1 (Inter-stick distance).
+            x_r = self.x_to_pixel(x, z_r)
+            z_mean = (z_l + z_r) / 2
+            y = self.z_to_pixel(z_mean)
 
-        # d2 (Kinect-stick distance).
-        ctx.set_source_rgb(0.5, 0.0, 0.0)
+            ctx.set_line_width(.5)
+            ctx.set_source_rgb(0.0, 0.5, 0.0)
 
-        ctx.move_to(270, 350)
-        ctx.line_to(270, 480)
-        ctx.stroke()
+            ctx.move_to(x_l, y)
+            ctx.line_to(x_r, y)
+            ctx.stroke()
 
-        ctx.set_font_size(16)
-        ctx.move_to(250, 440)
-        ctx.show_text('d2')
-        ctx.stroke()
+            ctx.set_font_size(16)
+            ctx.move_to(310, y - 5)
+            ctx.show_text('d1')
+            ctx.stroke()
 
-        ctx.move_to(500, 455)
-        ctx.show_text('d2 = 1.0 m')
-        ctx.stroke()
+            ctx.move_to(500, 435)
+            ctx.show_text('d1 = xx m')
+            ctx.stroke()
+
+            # d2 (Kinect-stick distance).
+            ctx.set_source_rgb(0.5, 0.0, 0.0)
+
+            ctx.move_to(270, y)
+            ctx.line_to(270, 480)
+            ctx.stroke()
+
+            ctx.set_font_size(16)
+            ctx.move_to(250, 440)
+            ctx.show_text('d2')
+            ctx.stroke()
+
+            ctx.move_to(500, 455)
+            ctx.show_text('d2 = %1.1f m' % (z_mean / 100))
+            ctx.stroke()
 
         # Current cursor depth.
         if self._z >= 50.0 and self._z != Kinect.UNDEF_DISTANCE:
