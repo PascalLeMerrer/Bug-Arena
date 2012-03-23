@@ -373,6 +373,10 @@ class KinectDisplay(gtk.DrawingArea):
 
 class GameSceneArea(gtk.DrawingArea):
 
+    ZONE_WIDTH = 180.0  # cm
+    ZONE_DEPTH = 150.0  # cm
+    KINECT_TO_ZONE_DISTANCE = 150.0  # cm
+
     def __init__(self, kinect):
         gtk.DrawingArea.__init__(self)
         self.set_size_request(640, 480)
