@@ -538,8 +538,10 @@ class GameSceneArea(gtk.DrawingArea):
 
 class KinectTestWindow(gtk.Window):
 
+    REFRESH_DELAY = 500  # ms
+
     def __init__(self):
-        self._paused = False
+        self._paused = True
         self._kinect = Kinect()
 
         gtk.Window.__init__(self)
@@ -578,7 +580,8 @@ class KinectTestWindow(gtk.Window):
         self.show_all()
 
         # Auto-refresh at 10 frames per seconds.
-        self.timer_id = gobject.timeout_add(1000, self._timedout)
+        self.timer_id = gobject.timeout_add(self.REFRESH_DELAY,
+                self._timedout)
 
     def _save_cb(self, widget, data=None):
         rgb = self._kinect.latest_rgb
@@ -598,7 +601,8 @@ class KinectTestWindow(gtk.Window):
             if not data:
                 self._display.refresh_data()
                 self.queue_draw()
-            self.timer_id = gobject.timeout_add(1000, self._timedout)
+            self.timer_id = gobject.timeout_add(self.REFRESH_DELAY,
+                    self._timedout)
         else:
             self.pause.set_label(gtk.STOCK_REFRESH)
 
