@@ -493,7 +493,10 @@ class GameSceneArea(gtk.DrawingArea):
 
             x = self.x_to_pixel(self._x, self._z)
             ctx.move_to(x, y - 5)
-            ctx.line_to(x, y + 5)
+            ctx.line_to(x, y - 10)
+            ctx.stroke()
+            ctx.move_to(x, y + 5)
+            ctx.line_to(x, y + 10)
             ctx.stroke()
 
             # Add distance info.
