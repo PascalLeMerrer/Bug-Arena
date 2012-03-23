@@ -371,6 +371,7 @@ class GameSceneArea(gtk.DrawingArea):
 
         self._kinect = kinect
         self._z = -1
+        self._y = -1
         self._x = -1
         self._feet = []
         self._left_stick, self._right_stick = None, None
@@ -381,7 +382,7 @@ class GameSceneArea(gtk.DrawingArea):
         return False
 
     def observable_changed(self, data):
-        self._x, _, self._z = data['cursor']
+        self._x, self._y, self._z = data['cursor']
         self._feet = data['feet']
         self._left_stick, self._right_stick = data['stick']
         self.queue_draw()
@@ -460,7 +461,7 @@ class GameSceneArea(gtk.DrawingArea):
             ctx.show_text('d1')
             ctx.stroke()
 
-            ctx.move_to(500, 435)
+            ctx.move_to(500, 400)
             ctx.show_text('d1 = xx m')
             ctx.stroke()
 
@@ -476,7 +477,7 @@ class GameSceneArea(gtk.DrawingArea):
             ctx.show_text('d2')
             ctx.stroke()
 
-            ctx.move_to(500, 455)
+            ctx.move_to(500, 420)
             ctx.show_text('d2 = %1.1f m' % (z_mean / 100))
             ctx.stroke()
 
@@ -510,7 +511,17 @@ class GameSceneArea(gtk.DrawingArea):
             ctx.show_text('z')
             ctx.stroke()
 
-            ctx.move_to(500, 475)
+            ctx.move_to(500, 440)
+            ctx.show_text('x = %2.2f m' % (
+                self.x_to_meter(self._x, self._z) / 100.0))
+            ctx.stroke()
+
+            ctx.move_to(500, 460)
+            ctx.show_text('y = %2.2f m' % (
+                self.x_to_meter(self._y, self._z) / 100.0))
+            ctx.stroke()
+
+            ctx.move_to(500, 480)
             ctx.show_text('z = %2.2f m' % (self._z / 100.0))
             ctx.stroke()
 
@@ -518,8 +529,8 @@ class GameSceneArea(gtk.DrawingArea):
         ctx.set_line_width(2)
         ctx.set_source_rgb(0.5, 0, 0)
         for foot in self._feet:
-            p, _, z = foot[0]
-            x = self.x_to_pixel(p, z)
+            px, _, z = foot[0]
+            x = self.x_to_pixel(px, z)
             y = self.z_to_pixel(z)
             ctx.move_to(x, y)
             for p, _, z in foot[1:]:
@@ -528,11 +539,22 @@ class GameSceneArea(gtk.DrawingArea):
                 ctx.line_to(x, y)
             ctx.stroke()
 
+    def x_to_meter(self, x, z):
+        # FIXME Returns centimeters.
+        coeff = 0.001734  # Measured constant.
+        return (320.0 - x) * z * coeff
+
+    def y_to_meter(self, y, z):
+        # FIXME Returns centimeters.
+        coeff = 0.001734  # Measured constant.
+        return ((480.0 - y) - 240.0) * z * coeff
+
     def z_to_pixel(self, z):
         # FIXME Needs proper scaling.
         return 450 - z
 
     def x_to_pixel(self, x, z):
+        # FIXME Update after X_to_meter.
         # .280 / 0.6 -> Measured constant
         # 180        -> pixel per meter
         coeff = - .280 / 0.6 / 180
