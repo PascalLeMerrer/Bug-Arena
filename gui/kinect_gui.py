@@ -16,6 +16,8 @@ import cairo
 import time
 import math
 
+import os
+
 
 class Kinect(object):
 
@@ -24,6 +26,8 @@ class Kinect(object):
     # Formula from http://vvvv.org/forum/the-kinect-thread.
     DEPTH_ARRAY = numpy.array([math.tan(d / 1024.0 + 0.5) * 33.825
         + 5.7 for d in range(2048)])
+
+    _filename = '2012-03-02_14-36-48'
 
     def __init__(self):
         self._loaded_rgb = None
@@ -47,12 +51,12 @@ class Kinect(object):
             # Use local data files.
             if self._loaded_rgb == None:
                 self._loaded_rgb = \
-                        numpy.load('2012-03-02_14-36-48_rgb.npy')
+                        numpy.load(self._filename + '_rgb.npy')
             rgb = self._loaded_rgb
 
             if self._loaded_depth == None:
                 self._loaded_depth = \
-                        numpy.load('2012-03-02_14-36-48_depth.npy')
+                        numpy.load(self._filename + '_depth.npy')
             depth = self._loaded_depth
 
         # Memorize results.
@@ -61,6 +65,11 @@ class Kinect(object):
         self.latest_present = found_kinect
 
         return found_kinect, rgb, depth
+
+    def set_filename(self, filename):
+        self._filename = filename
+        self._loaded_rgb = None
+        self._loaded_depth = None
 
 
 class DepthAnalyser(object):
@@ -590,6 +599,11 @@ class KinectTestWindow(gtk.Window):
         button_vbox = gtk.VBox()
         hbox.pack_start(button_vbox)
 
+        # Choose static data.
+        self.choose = gtk.Button('Open', gtk.STOCK_OPEN)
+        button_vbox.pack_start(self.choose)
+        self.choose.connect("clicked", self._choose_cb)
+
         # Save button.
         self.save = gtk.Button('Save', gtk.STOCK_SAVE)
         self.save.set_sensitive(False)
@@ -608,6 +622,37 @@ class KinectTestWindow(gtk.Window):
         self.timer_id = gobject.timeout_add(self.REFRESH_DELAY,
                 self._timedout)
 
+    def _choose_cb(self, widget, data=None):
+        # Create file chooser.
+        dialog = gtk.FileChooserDialog("Open..",
+                None,
+                gtk.FILE_CHOOSER_ACTION_OPEN,
+                (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                    gtk.STOCK_OPEN, gtk.RESPONSE_OK))
+        dialog.set_default_response(gtk.RESPONSE_OK)
+
+        # Get only numpy arrays.
+        filter = gtk.FileFilter()
+        filter.set_name("Numpy arrays")
+        filter.add_pattern("*_depth.npy")
+        dialog.add_filter(filter)
+
+        response = dialog.run()
+        chosen = response == gtk.RESPONSE_OK
+        if chosen:
+            # Extract file basename.
+            filename = dialog.get_filename()[:-10]
+            basename = os.path.basename(filename)
+            self._kinect.set_filename(basename)
+            print basename, 'selected'
+
+        dialog.destroy()
+
+        # Refresh GUI if needed.
+        if chosen:
+            self._display.refresh_data()
+            self.queue_draw()
+
     def _save_cb(self, widget, data=None):
         rgb = self._kinect.latest_rgb
         depth = self._kinect.latest_depth
@@ -619,6 +664,7 @@ class KinectTestWindow(gtk.Window):
     def _pause_cb(self, widget, data=None):
         self._paused = not self._paused
         self.save.set_sensitive(self._paused)
+        self.choose.set_sensitive(self._paused)
 
         if not self._paused:
             self.pause.set_label(gtk.STOCK_MEDIA_PAUSE)
