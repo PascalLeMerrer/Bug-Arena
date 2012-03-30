@@ -80,10 +80,10 @@ Obstacle = namedtuple('Obstacle', 'bounds min_height, raw_data')
 
 class DepthAnalyser(object):
 
-    # TODO Find out suitable static zone. Suggestion: have a
+    # TODO Find out suitable static detection stripe. Suggestion: have a
     #      look at typical computed detection band, see below.
-    EXTRACTION_ZONE_START = 0  # px
-    EXTRACTION_ZONE_STOP = 0  # px
+    EXTRACTION_STRIPE_START = 0  # px
+    EXTRACTION_STRIPE_STOP = 0  # px
 
     def __init__(self, depth):
         self._depth = depth
@@ -137,6 +137,8 @@ class DepthAnalyser(object):
         x_min = x_left + width_left
         x_max = x_right
 
+        print "Dectection band is", \
+                x_min + 1, y_min, x_max - x_min - 2, y_max - y_min
         return x_min + 1, y_min, x_max - x_min - 2, y_max - y_min
 
     def extract_borders(self, detection_band):
