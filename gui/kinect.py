@@ -80,15 +80,23 @@ Obstacle = namedtuple('Obstacle', 'bounds min_height, raw_data')
 
 class DepthAnalyser(object):
 
+    # TODO Find out suitable static zone. Suggestion: have a
+    #      look at typical computed detection band, see below.
+    EXTRACTION_ZONE_START = 0  # px
+    EXTRACTION_ZONE_STOP = 0  # px
+
     def __init__(self, depth):
         self._depth = depth
 
-        # TODO Limit conversion to detection zone.
-
         # Convert depth to cm.
         self._distance = Kinect.DIST_ARRAY[depth]
-        # TODO Also convert x and y axis to cm here.
 
+        # TODO
+        #  - Limit conversion to detection zone.
+        #  - Also convert x and y axis to cm here.
+        #  - Get distance bounds of gaming area?
+
+    # TODO Remove this method.
     def find_sticks(self):
 
         # Remove further objects.
@@ -117,6 +125,8 @@ class DepthAnalyser(object):
 
         return left, right
 
+    # TODO Remove this method. But get a general
+    #      idea of returned values first.
     def extract_detection_band(self, left_stick, right_stick):
         x_left, y_left, width_left, heigth_left, _ = left_stick
         x_right, y_right, width_right, heigth_right, _ = right_stick
@@ -132,7 +142,7 @@ class DepthAnalyser(object):
     def extract_borders(self, detection_band):
         result = []
 
-        MAX_DEPTH = 300.0  # 3 meters.
+        MAX_DEPTH = 300.0  # 3 meters. FIXME Depends on Gaming Zone size.
 
         x, y, w, h = detection_band
         for col in range(w):
