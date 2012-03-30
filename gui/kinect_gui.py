@@ -1,7 +1,3 @@
-# TODO
-#  - Have a look at freenect async data getters.
-#  - Ensure Kinect tilt is neutral at startup.
-
 from freenect import sync_get_depth as get_depth, sync_get_video as get_video
 import numpy
 
@@ -560,8 +556,8 @@ class GameSceneArea(gtk.DrawingArea):
     def y_to_meter(self, y, z):
         # FIXME Returns centimeters.
         coeff = 0.001734  # Measured constant.
-        dev = 9 / coeff / 200 # Horizon is not at y = 0.
-        h = 6.0 # Kinect captor is not at y = 0.
+        dev = 9 / coeff / 200  # Horizon is not at y = 0.
+        h = 6.0  # Kinect captor is not at y = 0.
         return ((480.0 - y) - 240.0 - dev) * z * coeff + h
 
     def z_to_pixel(self, z):
