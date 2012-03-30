@@ -170,7 +170,7 @@ class KinectDisplay(gtk.DrawingArea):
             # Tell about center_depth.
             depth = self._kinect.latest_depth[self._y, self._x]
             distance = self._kinect.depth_to_cm(depth)
-            if distance > 0:
+            if distance != Kinect.UNDEF_DISTANCE:
                 text = "(%d, %d) - distance: %0.0f cm (depth = %d)" \
                         % (self._x, self._y, distance, depth)
             else:

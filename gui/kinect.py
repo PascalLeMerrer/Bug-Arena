@@ -1,16 +1,27 @@
 from freenect import sync_get_depth as get_depth, sync_get_video as get_video
 import numpy
 
-import math
-
 
 class Kinect(object):
 
     UNDEF_DEPTH = 2047
     UNDEF_DISTANCE = 2000.0
+
     # Formula from http://vvvv.org/forum/the-kinect-thread.
-    DEPTH_ARRAY = numpy.array([math.tan(d / 1024.0 + 0.5) * 33.825
-        + 5.7 for d in range(2048)])
+    _dist_values = numpy.tan(numpy.arange(2048) / 1024.0 + 0.5) * 33.825 + 5.7
+
+    # XBox 360 Kinect is said to be OK with
+    # depth values between 80 cm and 4 meters.
+    MIN_DISTANCE = 80.0  # cm
+    DIST_ARRAY = numpy.where(
+            MIN_DISTANCE < _dist_values,
+            _dist_values,
+            UNDEF_DISTANCE)
+    MAX_DISTANCE = 400.0  # cm
+    DIST_ARRAY = numpy.where(
+            DIST_ARRAY < MAX_DISTANCE,
+            DIST_ARRAY,
+            UNDEF_DISTANCE)
 
     _filename = '2012-03-02_14-36-48'
 
@@ -23,7 +34,7 @@ class Kinect(object):
         self.latest_present = False
 
     def depth_to_cm(self, depth):
-        return self.DEPTH_ARRAY[depth]
+        return self.DIST_ARRAY[depth]
 
     def get_frames(self):
 
@@ -62,9 +73,11 @@ class DepthAnalyser(object):
     def __init__(self, depth):
         self._depth = depth
 
-        # Convert to cm.
-        self._distance = numpy.where(
-                depth < 1000, Kinect.DEPTH_ARRAY[depth], Kinect.UNDEF_DISTANCE)
+        # TODO Limit conversion to detection zone.
+
+        # Convert depth to cm.
+        self._distance = Kinect.DIST_ARRAY[depth]
+        # TODO Also convert x and y axis to cm here.
 
     def find_sticks(self):
 
