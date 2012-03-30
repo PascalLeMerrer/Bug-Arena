@@ -1,6 +1,8 @@
 from freenect import sync_get_depth as get_depth, sync_get_video as get_video
 import numpy
 
+from collections import namedtuple
+
 
 class Kinect(object):
 
@@ -66,6 +68,14 @@ class Kinect(object):
         self._filename = filename
         self._loaded_rgb = None
         self._loaded_depth = None
+
+
+# Returned by analyzer object.
+#
+# bounds        Rectangle that contains the obstacle. Tuple (x, y, w, h)
+# min_height    Minimal y value detected in the obstacle. Int
+# raw_data      Detected data. Numpy Array
+Obstacle = namedtuple('Obstacle', 'bounds min_height, raw_data')
 
 
 class DepthAnalyser(object):
@@ -163,4 +173,5 @@ class DepthAnalyser(object):
             result.append([(x, y, z) for x, y, z in foot
                 if m - y <= MAX_BORDER_HEIGHT])
 
+        # FIXME Should return Obstacle object list.
         return result
