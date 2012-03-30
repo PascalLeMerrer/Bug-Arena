@@ -531,7 +531,7 @@ class GameSceneArea(gtk.DrawingArea):
 
             ctx.move_to(500, 460)
             ctx.show_text('y = %2.2f m' % (
-                self.x_to_meter(self._y, self._z) / 100.0))
+                self.y_to_meter(self._y, self._z) / 100.0))
             ctx.stroke()
 
             ctx.move_to(500, 480)
@@ -560,16 +560,16 @@ class GameSceneArea(gtk.DrawingArea):
     def y_to_meter(self, y, z):
         # FIXME Returns centimeters.
         coeff = 0.001734  # Measured constant.
-        return ((480.0 - y) - 240.0) * z * coeff
+        dev = 9 / coeff / 200 # Horizon is not at y = 0.
+        h = 6.0 # Kinect captor is not at y = 0.
+        return ((480.0 - y) - 240.0 - dev) * z * coeff + h
 
     def z_to_pixel(self, z):
         # FIXME Needs proper scaling.
         return 450 - z
 
     def x_to_pixel(self, x, z):
-        # FIXME Update after X_to_meter.
-        # .280 / 0.6 -> Measured constant
-        # 180        -> pixel per meter
+        # FIXME Update with x_to_meter.
         coeff = - .280 / 0.6 / 180
         return 320 + (320.0 - x) * z * coeff
 
