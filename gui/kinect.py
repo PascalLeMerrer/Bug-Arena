@@ -1,7 +1,9 @@
-import numpy
+import numpy,time
 
 from collections import namedtuple
 
+
+DEFAULT_ANALYSIS_BAND = (37, 196, 566, 85)
 
 class Kinect(object):
 
@@ -33,15 +35,32 @@ class Kinect(object):
         self.latest_rgb = None
         self.latest_depth = None
         self.latest_present = False
+
+        self._faked = True
         try : 
             from freenect import sync_get_depth as get_depth, sync_get_video as get_video
             self._faked = False
         except ImportError : 
             print "Kinect module not found. Faking it"
-            self._faked = True
 
-    def depth_to_cm(self, depth):
-        return self.DIST_ARRAY[depth]
+    @classmethod
+    def depth_to_cm(cls, depth):
+        return cls.DIST_ARRAY[depth]
+
+    @staticmethod
+    def x_to_meter(x, z):
+        # FIXME Returns centimeters.
+        coeff = 0.001734  # Measured constant.
+        return (320.0 - x) * z * coeff
+
+    @staticmethod
+    def y_to_meter(y, z):
+        # FIXME Returns centimeters.
+        coeff = 0.001734  # Measured constant.
+        dev = 9 / coeff / 200  # Horizon is not at y = 0.
+        h = 6.0  # Kinect captor is not at y = 0.
+        return ((480.0 - y) - 240.0 - dev) * z * coeff + h
+
 
     def get_frames(self):
 
@@ -86,7 +105,7 @@ class Kinect(object):
 # bounds        Rectangle that contains the obstacle. Tuple (x, y, w, h)
 # min_height    Minimal y value detected in the obstacle. Int
 # raw_data      Detected data. Numpy Array
-Obstacle = namedtuple('Obstacle', 'bounds min_height, raw_data')
+Obstacle = namedtuple('Obstacle', 'bounds, min_height, raw_data')
 
 
 class DepthAnalyser(object):
@@ -199,15 +218,78 @@ class DepthAnalyser(object):
         # FIXME Should return Obstacle object list.
         return result
 
+def ti(fun,*args,**kwargs) : 
+    tic=time.time()
+    r = fun(*args,**kwargs)
+    print fun.__name__,"%.03f"%(time.time()-tic)
+    return r
+
+
 def data_extract(depth) : 
     # Perform basic data extraction.
     _analyzer = DepthAnalyser(depth)
-    l, r = _analyzer.find_sticks()
-    dz = _analyzer.extract_detection_band(l, r)
-    lb = _analyzer.extract_borders(dz)
-    f = _analyzer.analyze_borders(lb)
+    l, r = ti(_analyzer.find_sticks)
+    dz = ti(_analyzer.extract_detection_band,l, r)
+    lb = ti(_analyzer.extract_borders,dz)
+    f = ti(_analyzer.analyze_borders,lb)
 
     return f
+
+def borders(depth,band=DEFAULT_ANALYSIS_BAND) : 
+    "returns bands from pixel depth"
+    MAX_DEPTH = 300.0  # 3 meters. FIXME Depends on Gaming Zone size.
+    MAX_BORDER_HEIGHT = 10  # pixels.
+
+    dist = Kinect.depth_to_cm(depth)
+
+    # -- Extract borders (lower Y where Z is in range)
+    bx, by, bw, bh = band
+
+
+    borders = []     # list of (x,ymax,z@ymax) of non empty columns
+
+    zone = dist[by:by+bh,bx:bx+bw]
+    # ymax : for each x : maximum Y for the given X on the zone where Z is in range
+    for x in xrange(zone.shape[1]) : 
+        non_null_y = numpy.argwhere(zone[:,x] <= MAX_DEPTH) # y in range
+        if non_null_y.size: # is there any z in the range ?
+            ymax = numpy.max(non_null_y)
+            # split to new if discontinuity (y ou z) ?
+            borders.append((bx+x,by+ymax,zone[ymax,x]))
+        # else : new foot
+
+
+            
+    
+    # -- Analysis
+
+    # Find obstacles in the field.
+    zones = []
+    x, _, z = borders[0]
+    prev_x = x
+    prev_z = z
+    foot = []
+    for x, y, z in borders:
+        # Separate disconnected zones.
+        if x - prev_x <= 1 and abs(prev_z - z) < 10:
+            foot.append((x, y, z))
+        else:
+            zones.append(foot)
+            foot = [(x, y, z)]
+        prev_x = x
+        prev_z = z
+    if foot:
+        zones.append(foot)
+
+    # Limit zone height.
+    result = []
+    for foot in zones:
+        m = max(y for _, y, _ in foot)
+        result.append([(x, y, z) for x, y, z in foot
+            if m - y <= MAX_BORDER_HEIGHT])
+
+    # FIXME Should return Obstacle object list.
+    return result
 
 
 
@@ -222,8 +304,7 @@ if __name__=='__main__' :
     print " rgb :",rgb.shape
     print " depth :",depth.shape
     print
-    a,b,c = data_extract(depth)
-    print "result data length : ",len(a),len(b),len(c)
+    b = data_extract(depth)
+    assert b==ti(borders,depth)
 
-    print '\n ---\npress enter'
-    r=raw_input()
+    
