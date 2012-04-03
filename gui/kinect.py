@@ -33,10 +33,11 @@ class Kinect(object):
         self.latest_rgb = None
         self.latest_depth = None
         self.latest_present = False
-        try : 
-            from freenect import sync_get_depth as get_depth, sync_get_video as get_video
+        try:
+            from freenect import sync_get_depth as get_depth
+            from freenect import sync_get_video as get_video
             self._faked = False
-        except ImportError : 
+        except ImportError:
             print "Kinect module not found. Faking it"
             self._faked = True
 
@@ -47,7 +48,7 @@ class Kinect(object):
 
         found_kinect = False
 
-        if not self._faked : 
+        if not self._faked:
             try:
                 # Try to obtain Kinect images.
                 (depth, _), (rgb, _) = get_depth(), get_video()
@@ -55,9 +56,9 @@ class Kinect(object):
             except TypeError:
                 pass
 
-        if not found_kinect : 
-            # Use local data files.
+        if not found_kinect:
 
+            # Use local data files.
             if self._loaded_rgb == None:
                 self._loaded_rgb = \
                         numpy.load(self._filename + '_rgb.npy')
@@ -199,7 +200,8 @@ class DepthAnalyser(object):
         # FIXME Should return Obstacle object list.
         return result
 
-def data_extract(depth) : 
+
+def data_extract(depth):
     # Perform basic data extraction.
     _analyzer = DepthAnalyser(depth)
     l, r = _analyzer.find_sticks()
@@ -209,21 +211,20 @@ def data_extract(depth) :
 
     return f
 
-
-
-if __name__=='__main__' : 
+if __name__ == '__main__':
     "test the library, don't execute if imported"
 
     print 'testing library ...'
     kinect = Kinect()
     found_kinect, rgb, depth = kinect.get_frames()
 
-    print 'Using','real data' if found_kinect else "faked data from %s"%Kinect._filename
-    print " rgb :",rgb.shape
-    print " depth :",depth.shape
+    print 'Using', 'real data' if found_kinect \
+            else "faked data from %s" % Kinect._filename
+    print " rgb :", rgb.shape
+    print " depth :", depth.shape
     print
-    a,b,c = data_extract(depth)
-    print "result data length : ",len(a),len(b),len(c)
+    a, b, c = data_extract(depth)
+    print "result data length : ", len(a), len(b), len(c)
 
     print '\n ---\npress enter'
-    r=raw_input()
+    r = raw_input()
