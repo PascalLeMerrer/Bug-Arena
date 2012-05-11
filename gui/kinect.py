@@ -136,61 +136,85 @@ def extract_obstacles(depth, band=_DEFAULT_ANALYSIS_BAND, surface=_DEFAULT_SURFA
              y:
              width:
              height:
-                 coordinates of the bounding rectangle in top view in centimeters
+                 coordinates of the bounding rectangle in top view *in centimeters*
+                 (0,0) : center in front of kinect
              z: minimal height of the rectangle from the ground, 0 => on the ground
 
              raw_data: the raw data for analysis
-'''
+    '''
     MAX_DEPTH = 300.0  # 3 meters. FIXME Depends on Gaming Zone size.
-    MAX_BORDER_HEIGHT = 10  # pixels.
+    MAX_BORDER_HEIGHT = 10  # pixels. a foot can never be higher than this. Restrict accordingly
+    MAX_Z_CHANGE = 10 # cm. consider discutinued foot if Z varies this much or more
 
     dist = z_to_cm(depth)
 
     # -- Extract borders (lower Y where Z is in range)
     bx, by, bw, bh = band
 
-    borders = []     # list of (x, ymax, z@ymax) of non empty columns
+    borders = []     # list of (x, ymax, z@ymax) of non-empty columns. ymax : max Y where z is not null
+    # x,y in pixels ; z in cm
 
-    zone = dist[by:by + bh, bx:bx + bw]
+    zone = dist[by:by + bh, bx:bx + bw] #extract zone from which data is considered
+
     # ymax: for each x: maximum Y for the given X on the zone where Z is in range
     for x in xrange(zone.shape[1]):
-        non_null_y = numpy.argwhere(zone[:, x] <= MAX_DEPTH)  # y in range
+        non_null_y = numpy.argwhere(zone[:, x] <= MAX_DEPTH)  # y in range ?
         if non_null_y.size:  # is there any z in the range ?
             ymax = numpy.max(non_null_y)
             # split to new if discontinuity (y ou z) ?
             borders.append((bx + x, by + ymax, zone[ymax, x]))
         # else: new foot
 
-    # -- Analysis
+    # -- Analysis :
 
-    # Find obstacles in the field.
-    zones = []
-    x, _, z = borders[0]
+    # Analyze from the borders array the list of feets
+
+    feet = [] # foot : (x,y,z) points in the foot, one per X
+    x, _, z = borders[0] # initialization
     prev_x = x
     prev_z = z
-    foot = []
+    foot = [] # current foot
     for x, y, z in borders:
-        # Separate disconnected zones.
-        if x - prev_x <= 1 and abs(prev_z - z) < 10:
+        # Separate disconnected feet.
+        # connected foot : contiguous X and not too abrupt z change
+        if x - prev_x <= 1 and abs(prev_z - z) < MAX_Z_CHANGE:
             foot.append((x, y, z))
         else:
-            zones.append(foot)
+            feet.append(foot)
             foot = [(x, y, z)]
         prev_x = x
         prev_z = z
     if foot:
-        zones.append(foot)
+        feet.append(foot)
 
-    # Limit zone height.
+    # Limit zone height : distance between base and top must be restricted. shrink foot accordingly (...)
+    # put back results to feet
     result = []
-    for foot in zones:
-        m = max(y for _, y, _ in foot)
+    for foot in feet:
+        m = y_to_cm(max(y for _, y, _ in foot)) # top du pied actuel
         result.append([(x, y, z) for x, y, z in foot
-            if m - y <= MAX_BORDER_HEIGHT])
+            if m - y_to_cm(y) <= MAX_BORDER_HEIGHT])
+    feet = result
 
+    final = []
+    for foot in feet :
+        left = x_to_cm(min(x for x,y,z in b))
+        right = x_to_cm(max(x for x,y,z in b))
 
-    return [Obstacle(x=min(p[0] for p in b), y=min(p[2] for p in b), width=0, height=0, z=min(p[1] for p in b), raw_data=b if provide_raw else None )
-         for b in result]
+        close = y_to_com(min(z for x,y,z in b))
+        far = y_to_cm(max(z for x,y,z in b))
+
+        bottom = min(y for x,y,z in b)
+
+        final.append(
+            x=left,
+            y=close,
+            width=right-left,
+            height=far-close,
+            z=min(p[1] for p in b),
+            raw_data=foot if provide_raw else None
+        )
+    return final
 
 def get_obstacles(provide_raw=False):
     "get buffers from the Kinect and extract obstacles. See extract_obstacles for obstacle definition"
